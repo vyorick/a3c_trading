@@ -14,7 +14,9 @@ import tensorflow as tf
 import tensorflow.contrib.slim as slim
 # %matplotlib inline
 from random import choice
-from trader_gym import environment
+from trader_gym import Environment
+
+
 # %load_ext ipycache
 
 
@@ -37,6 +39,7 @@ def normalized_columns_initializer(std=1.0):
         out = np.random.randn(*shape).astype(np.float32)
         out *= std / np.sqrt(np.square(out).sum(axis=0, keepdims=True))
         return tf.constant(out)
+
     return _initializer
 
 
@@ -45,12 +48,12 @@ class AC_Network():
         with tf.variable_scope(scope):
             self.inputs = tf.placeholder(shape=[None, s_size], dtype=tf.float32)
             self.imageIn = tf.reshape(self.inputs, shape=[-1, s_size])
-            if(EXTRA_DENSE):
+            if EXTRA_DENSE:
                 hidden = slim.fully_connected(slim.flatten(self.imageIn), N_HIDDEN, activation_fn=tf.nn.tanh)
             else:
                 hidden = slim.flatten(self.imageIn)
 
-            if(DROPOUT):
+            if DROPOUT:
                 rnn_in = tf.layers.dropout(
                     hidden,
                     rate=0.5,
@@ -78,7 +81,7 @@ class AC_Network():
             self.state_out = (lstm_c[:1, :], lstm_h[:1, :])
             rnn_out = tf.reshape(lstm_outputs, [-1, N_HIDDEN])
 
-            if(COOL_A):
+            if COOL_A:
                 a_in = slim.fully_connected(slim.flatten(rnn_out), 32, activation_fn=tf.nn.tanh)
             else:
                 a_in = rnn_out
@@ -87,7 +90,7 @@ class AC_Network():
                                                activation_fn=tf.nn.softmax,
                                                weights_initializer=normalized_columns_initializer(0.01),
                                                biases_initializer=None)
-            if(COOL_V):
+            if COOL_V:
                 v_in = slim.fully_connected(slim.flatten(rnn_out), 32, activation_fn=tf.nn.tanh)
             else:
                 v_in = rnn_out
@@ -118,7 +121,7 @@ class AC_Network():
                 self.apply_grads = trainer.apply_gradients(zip(grads, global_vars))
 
 
-class Worker():
+class Worker:
     def __init__(self, env, name, s_size, a_size, trainer, model_path, global_episodes):
         self.name = "worker_" + str(name)
         self.number = name
@@ -188,10 +191,11 @@ class Worker():
                 summary = tf.Summary()
 
                 while d == False:
-                    a_dist, v, rnn_state = sess.run([self.local_AC.policy, self.local_AC.value, self.local_AC.state_out],
-                                                    feed_dict={self.local_AC.inputs: [s],
-                                                               self.local_AC.state_in[0]: rnn_state[0],
-                                                               self.local_AC.state_in[1]: rnn_state[1]})
+                    a_dist, v, rnn_state = sess.run(
+                        [self.local_AC.policy, self.local_AC.value, self.local_AC.state_out],
+                        feed_dict={self.local_AC.inputs: [s],
+                                   self.local_AC.state_in[0]: rnn_state[0],
+                                   self.local_AC.state_in[1]: rnn_state[1]})
                     a = np.random.choice(a_dist[0], p=a_dist[0])
                     a = np.argmax(a_dist == a)
                     s1, r, d, _ = self.env.step(self.actions[a])
@@ -209,7 +213,7 @@ class Worker():
                     s = s1
                     total_steps += 1
                     episode_step_count += 1
-#                     Save history of boss actions
+                    #                     Save history of boss actions
 
                     if len(episode_buffer) == 200 and d != True and episode_step_count != max_episode_length - 1:
                         v1 = sess.run(self.local_AC.value,
@@ -256,7 +260,7 @@ class Worker():
                 print(episode_count, episode_reward)
 
 
-class Test_Worker():
+class TestWorker:
     def __init__(self, env, name, s_size, a_size, trainer, model_path, global_episodes):
         self.name = "worker_" + str(name)
         self.number = name
@@ -287,7 +291,7 @@ class Test_Worker():
             rnn_state = self.local_AC.state_init
             summary = tf.Summary()
 
-            while d == False:
+            while not d:
                 a_dist, v, rnn_state = sess.run([self.local_AC.policy, self.local_AC.value, self.local_AC.state_out],
                                                 feed_dict={self.local_AC.inputs: [s],
                                                            self.local_AC.state_in[0]: rnn_state[0],
@@ -296,7 +300,7 @@ class Test_Worker():
                 p = np.amax(a_dist[0])
                 a = np.argmax(a_dist[0])
                 # print('argmax',p,'max',a)
-                if(p < tresh):
+                if p < tresh:
                     a = self.prev_act
                 self.prev_act = a
                 # print(a)

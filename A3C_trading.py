@@ -5,7 +5,7 @@ from multiprocessing import Pool
 import warnings
 import numpy as np
 import scipy
-import pybacktest as pb
+# import pybacktest as pb
 import matplotlib.pyplot as plt
 import threading
 import multiprocessing
@@ -16,9 +16,9 @@ from random import choice
 from time import sleep
 from time import time
 import sys
-from trader_gym import environment
+from trader_gym import Environment
 from A3C_class import *
-from configs import TRAIN_DATA, LOAD_MODEL, LR, FRAMES_STACKED, NUM_WORKERS, MODEL_DIR
+from configs import TRAIN_DATA, LOAD_MODEL, LR, FRAMES_STACKED, NUM_WORKERS, MODEL_DIR, USE_DEVICE
 warnings.filterwarnings("ignore")
 
 # Если нет файла, то его нужно создать с помощью load_data.ipynb
@@ -43,7 +43,7 @@ with tf.device(USE_DEVICE):
     master_network = AC_Network(s_size, a_size, 'global', None)
     workers = []
     for i in range(NUM_WORKERS):
-        env = environment(train_df, max_episode_len)
+        env = Environment(train_df, max_episode_len)
         workers.append(Worker(env, i, s_size, a_size, trainer, MODEL_DIR, global_episodes))
     saver = tf.train.Saver(max_to_keep=25)
 

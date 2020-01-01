@@ -4,10 +4,12 @@ import os
 import pandas as pd
 from multiprocessing import Pool
 import warnings
+
 warnings.filterwarnings("ignore")
 import numpy as np
 import scipy
 import matplotlib as mpl
+
 mpl.use('Agg')
 import pybacktest as pb
 import matplotlib.pyplot as plt
@@ -21,21 +23,23 @@ from random import choice
 from time import sleep
 from time import time
 import sys
-from trader_gym import environment
+from trader_gym import Environment
 from A3C_class import *
+
 # %load_ext ipycache
 max_episode_length = 300
 import matplotlib
+
 matplotlib.rcParams.update({'font.size': 21})
-from configs import postfix, test_postfix, load_model, LR, dep, test_postfix_real, postfix_real
+from configs import POSTFIX_REAL, TEST_POSTFIX, LOAD_MODEL, LR, dep, TEST_POSTFIX_REAL, POSTFIX_REAL
 
 data_dir_path = '/mnt/a3c_data/'
 
 # data
-print(data_dir_path + str(test_postfix))
-R = pd.read_pickle(data_dir_path + str(test_postfix))
-R = R[False == R.index.duplicated()]
-test_R = pd.read_pickle(data_dir_path + str(test_postfix_real))
+print(data_dir_path + str(TEST_POSTFIX))
+R = pd.read_pickle(data_dir_path + str(TEST_POSTFIX))
+R = R[R.index.duplicated() == False]
+test_R = pd.read_pickle(data_dir_path + str(TEST_POSTFIX_REAL))
 test_R = test_R[False == test_R.index.duplicated()]
 # print (R.mean()[0], R.max()[0], (R.max()[0] - R.min()[0]), (R.max()[0] - R.mean()[0])/(R.max()[0] - R.min()[0]), (R.min()[0] - R.mean()[0])/(R.max()[0] - R.min()[0]))
 R = (R - R.mean()) / (R.max() - R.min())
@@ -43,6 +47,8 @@ old_R = R.copy()
 vals = R.values
 D = np.hstack([vals[i:-dep + i - 1, :] for i in range(dep, 0, -1)])
 R = pd.DataFrame(D, R[dep:-1].index)
+
+
 # R = R[:10000]
 
 
@@ -56,13 +62,14 @@ def run_trades(max_episode_length, gamma, s_size, a_size, load_model, model_path
         num_workers = 1
         workers = []
         for i in range(num_workers):
-            workers.append(Test_Worker(env, i, s_size, a_size, trainer, model_path, global_episodes))
+            workers.append(TestWorker(env, i, s_size, a_size, trainer, model_path, global_episodes))
         saver = tf.train.Saver(max_to_keep=5)
 
     gpu_options = tf.GPUOptions(per_process_gpu_memory_fraction=0)
     if not os.path.exists(model_path):
         os.makedirs(model_path)
-    with tf.Session(config=tf.ConfigProto(allow_soft_placement=False, log_device_placement=False, gpu_options=gpu_options)) as sess:
+    with tf.Session(config=tf.ConfigProto(allow_soft_placement=False, log_device_placement=False,
+                                          gpu_options=gpu_options)) as sess:
         coord = tf.train.Coordinator()
 
         if load_model:
@@ -76,6 +83,7 @@ def run_trades(max_episode_length, gamma, s_size, a_size, load_model, model_path
         worker_threads = []
         for worker in workers:
             def worker_work(): return worker.work(max_episode_length, gamma, sess, coord, saver, dep, 0.33)
+
             t = threading.Thread(target=(worker_work))
             t.start()
             worker_threads.append(t)
@@ -125,7 +133,7 @@ test_rews = np.zeros((n_noises, n_runs, length - 1))
 
 for j in range(n_noises):
     np.random.seed(j)
-    env = environment(R + (np.random.rand(R.shape[0], R.shape[1]) - 0.5) * (1e-5 * (0**j)), length)
+    env = Environment(R + (np.random.rand(R.shape[0], R.shape[1]) - 0.5) * (1e-5 * (0 ** j)), length)
     for i in range(n_runs):
         np.random.seed(i + 1377)
         test_acts[j, i, :], test_rews[j, i, :] = run_trades(
@@ -145,6 +153,8 @@ for k in range(n_noises):
             test_acts_probs[k, a + 1, i] += 1
     test_acts_probs[k, :, :] = test_acts_probs[k, :, :] / n_runs
     acts[k, :] = [np.argmax(x) - 1 if max(x) > tresh else 0 for x in test_acts_probs[k, :, :].T]
+
+
 # print(test_acts_probs)
 # plt.plot(acts.T)
 # plt.show()
@@ -161,7 +171,7 @@ folder = os.path.relpath(".", "..")
 for i in range(2):
     # [ R.index.get_loc('2015-12-29 10:06:00')[0], R.index.get_loc('2016-01-15 10:06:00')[0], \
     lengths = [R.index.get_loc('2016-03-15 10:06:00')[0], R.index.get_loc('2016-06-15 10:06:00')[0]]
-    #names = ['2 weeks', '1 month', '3 month', '6 months']
+    # names = ['2 weeks', '1 month', '3 month', '6 months']
     names = ['3 month', '6 months']
     bt = backtest(acts[-1, :lengths[i]], test_R[:lengths[i] + dep + 2])
     fig = plt.figure(figsize=(12, 10))
@@ -179,12 +189,11 @@ for i in range(2):
     B = bt.report
     write_report(B, '../new_plots/' + folder + '_.txt')
 
-
 # data
-R = pd.read_pickle(data_dir_path + str(postfix))
+R = pd.read_pickle(data_dir_path + str(POSTFIX_REAL))
 R = R[False == R.index.duplicated()]
 
-test_R = pd.read_pickle(data_dir_path + str(postfix_real))
+test_R = pd.read_pickle(data_dir_path + str(POSTFIX_REAL))
 test_R = test_R[False == test_R.index.duplicated()]
 # print (R.mean()[0], R.max()[0], (R.max()[0] - R.min()[0]), (R.max()[0] - R.mean()[0])/(R.max()[0] - R.min()[0]), (R.min()[0] - R.mean()[0])/(R.max()[0] - R.min()[0]))
 R = (R - R.mean()) / (R.max() - R.min())
@@ -192,6 +201,8 @@ old_R = R.copy()
 vals = R.values
 D = np.hstack([vals[i:-dep + i - 1, :] for i in range(dep, 0, -1)])
 R = pd.DataFrame(D, R[dep:-1].index)
+
+
 # R = R[:10000]
 
 
@@ -205,13 +216,14 @@ def run_trades(max_episode_length, gamma, s_size, a_size, load_model, model_path
         num_workers = 1
         workers = []
         for i in range(num_workers):
-            workers.append(Test_Worker(env, i, s_size, a_size, trainer, model_path, global_episodes))
+            workers.append(TestWorker(env, i, s_size, a_size, trainer, model_path, global_episodes))
         saver = tf.train.Saver(max_to_keep=5)
 
     gpu_options = tf.GPUOptions(per_process_gpu_memory_fraction=0)
     if not os.path.exists(model_path):
         os.makedirs(model_path)
-    with tf.Session(config=tf.ConfigProto(allow_soft_placement=False, log_device_placement=False, gpu_options=gpu_options)) as sess:
+    with tf.Session(config=tf.ConfigProto(allow_soft_placement=False, log_device_placement=False,
+                                          gpu_options=gpu_options)) as sess:
         coord = tf.train.Coordinator()
 
         if load_model:
@@ -225,6 +237,7 @@ def run_trades(max_episode_length, gamma, s_size, a_size, load_model, model_path
         worker_threads = []
         for worker in workers:
             def worker_work(): return worker.work(max_episode_length, gamma, sess, coord, saver, dep, 0.33)
+
             t = threading.Thread(target=(worker_work))
             t.start()
             worker_threads.append(t)
@@ -274,7 +287,7 @@ test_rews = np.zeros((n_noises, n_runs, length - 1))
 
 for j in range(n_noises):
     np.random.seed(j)
-    env = environment(R + (np.random.rand(R.shape[0], R.shape[1]) - 0.5) * (1e-5 * (0**j)), length)
+    env = Environment(R + (np.random.rand(R.shape[0], R.shape[1]) - 0.5) * (1e-5 * (0 ** j)), length)
     for i in range(n_runs):
         np.random.seed(i + 1377)
         test_acts[j, i, :], test_rews[j, i, :] = run_trades(
@@ -294,6 +307,8 @@ for k in range(n_noises):
             test_acts_probs[k, a + 1, i] += 1
     test_acts_probs[k, :, :] = test_acts_probs[k, :, :] / n_runs
     acts[k, :] = [np.argmax(x) - 1 if max(x) > tresh else 0 for x in test_acts_probs[k, :, :].T]
+
+
 # print(test_acts_probs)
 # plt.plot(acts.T)
 # plt.show()

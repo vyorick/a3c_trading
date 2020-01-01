@@ -2,12 +2,12 @@
 # Данный файл содержит envinroment как в гуме
 # Готовит список файлов с полными именами для загрузки
 import numpy as np
-from configs import comission, PRICE_MAG
+from configs import COMISSION, PRICE_MAG
 
 # Реализация класса environment наподобие такогого из openai.gym
 
 
-class environment:
+class Environment:
     def __init__(self, data_frame, leng):
         self.big_data = data_frame.values
         self.len = leng
@@ -25,7 +25,7 @@ class environment:
         self.done = False
         self.prev_equity = 0
         self.equity = 0
-        self.comission = comission
+        self.comission = COMISSION
         # Штраф за повторы
         self.same_steps = 0
         self.prev_act = 0

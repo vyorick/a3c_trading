@@ -23,3 +23,13 @@ LOAD_MODEL = False
 LR = 1e-4
 COMISSION = 20  # rubls
 PRICE_MAG = 1 / 5000  # среднне различие между макс и мин ценой за 5000 шагов
+
+NUM_WORKERS = 1
+FRAMES_STACKED = 0
+TRAIN_DATA = None
+
+dep = None
+gamma = 0.01
+training = None
+
+USE_DEVICE = 'CPU'
